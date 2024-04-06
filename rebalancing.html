@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>資產配置再平衡試算表</title>
+    <style>
+        .negative {
+            color: red;
+            font-weight: bold;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<h2>資產配置再平衡試算表</h2>
+
+<!-- 添加出入金金額 -->
+<div id="cashInOut">
+    <label for="cashAmount">出入金金額：</label>
+    <input type="number" id="cashAmount" name="cashAmount" value="0" onchange="calculate()">
+</div>
+
+<br>
+
+<button onclick="addRow()">增加股票代號</button>
+<button onclick="removeRow()">減少股票代號</button>
+
+<table id="portfolioTable">
+    <tr>
+        <th>股票代號</th>
+        <th>理想配置占比 (%)</th>
+        <th>價格</th>
+        <th>市值</th>
+        <th>交易股數</th>
+        <th>買賣金額</th>
+    </tr>
+    <tr>
+        <td><input type="text" name="symbol"></td>
+        <td><input type="number" name="idealRatio" oninput="calculate()"></td>
+        <td><input type="number" name="price" oninput="calculate()"></td>
+        <td><input type="number" name="marketValue" oninput="calculate()"></td>
+        <td><input type="number" name="tradeShares" readonly></td>
+        <td><input type="number" name="tradeAmount" readonly></td>
+    </tr>
+    <!-- 添加市值和理想配置占比的總和行 -->
+    <tr id="totalRow">
+        <td>總和</td>
+        <td id="totalIdealRatio">0</td>
+        <td></td>
+        <td id="totalMarketValue">0</td>
+        <td colspan="2"></td>
+    </tr>
+</table>
+
+<script>
+function addRow() {
+    var table = document.getElementById("portfolioTable");
+    var totalRow = document.getElementById("totalRow");
+    var row = table.insertRow(table.rows.length - 1); // 在總和行之前插入新行
+    var cell1 = row.insertCell(0);
+    var cell2 = row.insertCell(1);
+    var cell3 = row.insertCell(2);
+    var cell4 = row.insertCell(3);
+    var cell5 = row.insertCell(4);
+    var cell6 = row.insertCell(5);
+
+    cell1.innerHTML = '<input type="text" name="symbol">';
+    cell2.innerHTML = '<input type="number" name="idealRatio" oninput="calculate()">';
+    cell3.innerHTML = '<input type="number" name="price" oninput="calculate()">';
+    cell4.innerHTML = '<input type="number" name="marketValue" oninput="calculate()">';
+    cell5.innerHTML = '<input type="number" name="tradeShares" readonly>';
+    cell6.innerHTML = '<input type="number" name="tradeAmount" readonly>';
+    calculate(); // 添加行後立即計算
+}
+
+function removeRow() {
+    var table = document.getElementById("portfolioTable");
+    if (table.rows.length > 3) { // 確保至少保留一行輸入行
+        table.deleteRow(table.rows.length - 2); // 刪除最後一個資料行
+        calculate(); // 刪除行後重新計算
+    }
+}
+
+function calculate() {
+    var table = document.getElementById("portfolioTable");
+    var totalMarketValue = 0;
+    var totalIdealRatio = 0;
+
+    // 獲取出入金金額
+    var cashAmount = parseFloat(document.getElementById('cashAmount').value) || 0;
+
+    // 步驟1: 計算總市值和總理想配置占比
+    Array.from(table.querySelectorAll('input[name="marketValue"]')).forEach(input => {
+        totalMarketValue += parseFloat(input.value) || 0;
+    });
+
+    // 計算調整後的總市值（包括出入金金額）
+    var adjustedTotalMarketValue = totalMarketValue + cashAmount;
+
+    Array.from(table.querySelectorAll('input[name="idealRatio"]')).forEach(input => {
+        totalIdealRatio += parseFloat(input.value) || 0;
+    });
+
+    // 顯示總市值（調整後）和總理想配置占比
+    document.getElementById("totalMarketValue").innerText = adjustedTotalMarketValue.toFixed(2);
+    document.getElementById("totalIdealRatio").innerText = totalIdealRatio.toFixed(2);
+
+    // 步驟2: 為每行計算並更新交易股數和買賣金額
+    for (let i = 1; i < table.rows.length - 1; i++) {
+        let row = table.rows[i];
+        let idealRatio = parseFloat(row.cells[1].getElementsByTagName('input')[0].value) || 0;
+        let price = parseFloat(row.cells[2].getElementsByTagName('input')[0].value) || 0;
+        let marketValue = parseFloat(row.cells[3].getElementsByTagName('input')[0].value) || 0;
+        
+        // 使用調整後的總市值計算目標市值
+        let targetMarketValue = (idealRatio / 100) * adjustedTotalMarketValue;
+        let tradeAmount = targetMarketValue - marketValue;
+        let tradeShares = Math.round(tradeAmount / price);
+
+        let tradeSharesInput = row.cells[4].getElementsByTagName('input')[0];
+        let tradeAmountInput = row.cells[5].getElementsByTagName('input')[0];
+
+        tradeSharesInput.value = tradeShares;
+        tradeAmountInput.value = tradeAmount.toFixed(2);
+
+        // 根據值的正負來添加或移除 'negative' 類
+        tradeShares < 0 ? tradeSharesInput.classList.add("negative") : tradeSharesInput.classList.remove("negative");
+        tradeAmount < 0 ? tradeAmountInput.classList.add("negative") : tradeAmountInput.classList.remove("negative");
+    }
+}
+
+</script>
+
+</body>
+</html>
